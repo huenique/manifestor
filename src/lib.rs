@@ -16,7 +16,7 @@ pub struct ConfigProperties {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Config {
     pub name: String,
-    pub properties: ConfigProperties,
+    pub properties: Option<ConfigProperties>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -31,6 +31,12 @@ pub struct CapabilityComponent {
 pub struct Properties {
     pub image: String,
     pub config: Option<Vec<Config>>,
+}
+
+impl AsRef<Properties> for Properties {
+    fn as_ref(&self) -> &Properties {
+        self
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -301,13 +307,13 @@ mod tests {
                     image: "ghcr.io/jabratech/ticker-provider:0.1.0".to_string(),
                     config: Some(vec![Config {
                         name: "future-ticker-deribit-btc".to_string(),
-                        properties: ConfigProperties {
+                        properties: Some(ConfigProperties {
                             exchange_name: Some("jabratech".to_string()),
                             uri: Some("192.100.1.213:4222".to_string()),
                             exchange: Some("deribit".to_string()),
                             currency: Some("btc".to_string()),
                             instrument_kind: Some("future".to_string()),
-                        },
+                        }),
                     }]),
                 }),
             },
@@ -318,13 +324,13 @@ mod tests {
                     image: "ghcr.io/jabratech/ticker-provider:0.1.0".to_string(),
                     config: Some(vec![Config {
                         name: "option-ticker-deribit-btc".to_string(),
-                        properties: ConfigProperties {
+                        properties: Some(ConfigProperties {
                             exchange_name: Some("deribit".to_string()),
                             uri: Some("192.100.1.213:4222".to_string()),
                             exchange: Some("deribit".to_string()),
                             currency: Some("btc".to_string()),
                             instrument_kind: Some("option".to_string()),
-                        },
+                        }),
                     }]),
                 }),
             },
