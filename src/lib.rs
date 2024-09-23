@@ -3,7 +3,9 @@ use std::error::Error;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Error as SerdeError;
+use serde_with::serde_as;
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct ConfigProperties {
     pub uri: Option<String>,
@@ -13,12 +15,14 @@ pub struct ConfigProperties {
     pub instrument_kind: Option<String>,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Config {
     pub name: String,
     pub properties: Option<ConfigProperties>,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct CapabilityComponent {
     pub name: String,
@@ -27,6 +31,7 @@ pub struct CapabilityComponent {
     pub properties: Option<Properties>,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Properties {
     pub image: String,
@@ -39,6 +44,7 @@ impl AsRef<Properties> for Properties {
     }
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Manifest {
     #[serde(rename = "apiVersion")]
@@ -48,29 +54,34 @@ pub struct Manifest {
     pub spec: Spec,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Metadata {
     pub name: String,
     pub annotations: Annotations,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Annotations {
     pub description: String,
     pub version: String,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Spec {
     pub components: Vec<CapabilityComponent>,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Manifests {
     #[serde(rename = "v0.0.1")]
     pub version: Manifest,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Root {
     pub manifests: Manifests,
@@ -182,6 +193,8 @@ pub fn get_manifests(
 
 #[cfg(test)]
 mod tests {
+    use std::{fs::File, io::Read as _};
+
     use super::*;
 
     // A mock function to simulate the behavior of the key-value store `get` function
@@ -338,5 +351,38 @@ mod tests {
 
         let result = extract_capability_components(json_data).unwrap();
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_extract_capability_components_from_file() -> Result<(), SerdeError> {
+        // Specify the path to your JSON file
+        let path = "../manifestor/tests/app_manifest.json";
+
+        // Open the file
+        let mut file = File::open(path).expect("File not found");
+
+        // Read the contents of the file into a string
+        let mut json_data = String::new();
+        file.read_to_string(&mut json_data)
+            .expect("Failed to read the file");
+
+        // Attempt to deserialize the JSON data into the Root struct
+        let result = extract_capability_components(&json_data);
+
+        // Ensure that deserialization succeeds
+        assert!(
+            result.is_ok(),
+            "Failed to deserialize JSON: {:?}",
+            result.err()
+        );
+
+        // Optionally, check the contents of the deserialized data
+        let capability_components = result.unwrap();
+        assert!(
+            !capability_components.is_empty(),
+            "No capability components found"
+        );
+
+        Ok(())
     }
 }

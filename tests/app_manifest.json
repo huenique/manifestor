@@ -1,0 +1,269 @@
+{
+  "manifests": {
+    "v0.0.1": {
+      "apiVersion": "core.oam.dev/v1beta1",
+      "kind": "Application",
+      "metadata": {
+        "name": "app-name",
+        "annotations": {
+          "description": "Application Description",
+          "version": "v0.0.1",
+          "wasmcloud.dev/authors": "authors",
+          "wasmcloud.dev/categories": "categories",
+          "wasmcloud.dev/homepage": "https://homepage.url",
+          "wasmcloud.dev/readme-md-url": "https://readme.url",
+          "wasmcloud.dev/source-url": "https://source.url"
+        }
+      },
+      "spec": {
+        "components": [
+          {
+            "name": "component-1",
+            "type": "component",
+            "properties": {
+              "image": "ghcr.io/repo/component-1:0.0.1",
+              "id": "component-1"
+            },
+            "traits": [
+              {
+                "type": "spreadscaler",
+                "properties": {
+                  "instances": 1
+                }
+              },
+              {
+                "type": "link",
+                "properties": {
+                  "target": "provider-1",
+                  "namespace": "namespace",
+                  "package": "package",
+                  "interfaces": [
+                    "consumer"
+                  ],
+                  "target_config": [
+                    {
+                      "name": "target-config-1",
+                      "properties": {
+                        "cluster_uris": "cluster-uri",
+                        "username": "username",
+                        "password": "password"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "component-2",
+            "type": "component",
+            "properties": {
+              "image": "ghcr.io/repo/component-2:0.0.1",
+              "id": "component-2"
+            },
+            "traits": [
+              {
+                "type": "spreadscaler",
+                "properties": {
+                  "instances": 1
+                }
+              },
+              {
+                "type": "link",
+                "properties": {
+                  "target": "provider-1",
+                  "namespace": "namespace",
+                  "package": "package",
+                  "interfaces": [
+                    "consumer"
+                  ],
+                  "target_config": [
+                    {
+                      "name": "target-config-2",
+                      "properties": {
+                        "cluster_uris": "cluster-uri",
+                        "username": "username",
+                        "password": "password"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "component-3",
+            "type": "component",
+            "properties": {
+              "image": "ghcr.io/repo/component-3:0.0.1",
+              "id": "component-3"
+            },
+            "traits": [
+              {
+                "type": "spreadscaler",
+                "properties": {
+                  "instances": 1
+                }
+              },
+              {
+                "type": "link",
+                "properties": {
+                  "target": "provider-1",
+                  "namespace": "namespace",
+                  "package": "package",
+                  "interfaces": [
+                    "consumer"
+                  ],
+                  "target_config": [
+                    {
+                      "name": "target-config-3",
+                      "properties": {
+                        "cluster_uris": "cluster-uri",
+                        "password": "password",
+                        "username": "username"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "component-4",
+            "type": "component",
+            "properties": {
+              "image": "ghcr.io/repo/component-4:1.0.0",
+              "id": "component-4",
+              "config": [
+                {
+                  "name": "app",
+                  "properties": {
+                    "app_name": "app-name"
+                  }
+                }
+              ]
+            },
+            "traits": [
+              {
+                "type": "spreadscaler",
+                "properties": {
+                  "instances": 1
+                }
+              },
+              {
+                "type": "link",
+                "properties": {
+                  "target": "provider-2",
+                  "namespace": "namespace",
+                  "package": "package",
+                  "interfaces": [
+                    "store"
+                  ],
+                  "target_config": [
+                    {
+                      "name": "target-config-4",
+                      "properties": {
+                        "url": "url"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "provider-1",
+            "type": "capability",
+            "properties": {
+              "image": "ghcr.io/repo/provider-1:0.1.0",
+              "config": [
+                {
+                  "name": "provider-config-1",
+                  "properties": {
+                    "group": "group"
+                  }
+                }
+              ]
+            },
+            "traits": [
+              {
+                "type": "link",
+                "properties": {
+                  "target": "component-1",
+                  "namespace": "namespace",
+                  "package": "package",
+                  "interfaces": [
+                    "handler"
+                  ],
+                  "source_config": [
+                    {
+                      "name": "source-config-1",
+                      "properties": {
+                        "endpoints": "endpoints",
+                        "username": "username",
+                        "password": "password",
+                        "cluster_uris": "cluster-uri"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "link",
+                "properties": {
+                  "target": "component-2",
+                  "namespace": "namespace",
+                  "package": "package",
+                  "interfaces": [
+                    "handler"
+                  ],
+                  "source_config": [
+                    {
+                      "name": "source-config-2",
+                      "properties": {
+                        "password": "password",
+                        "username": "username",
+                        "cluster_uris": "cluster-uri",
+                        "endpoints": "endpoints"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "link",
+                "properties": {
+                  "target": "component-3",
+                  "namespace": "namespace",
+                  "package": "package",
+                  "interfaces": [
+                    "handler"
+                  ],
+                  "source_config": [
+                    {
+                      "name": "source-config-3",
+                      "properties": {
+                        "cluster_uris": "cluster-uri",
+                        "username": "username",
+                        "endpoints": "endpoints",
+                        "password": "password"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "provider-2",
+            "type": "capability",
+            "properties": {
+              "image": "ghcr.io/repo/provider-2:0.1.0"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "deployed_version": "v0.0.1"
+}
