@@ -2,7 +2,6 @@ use std::error::Error;
 
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Error as SerdeError;
 use serde_with::serde_as;
 
 #[serde_as]
@@ -77,8 +76,7 @@ pub struct Spec {
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Manifests {
-    #[serde(rename = "v0.0.1")]
-    pub version: Manifest,
+    pub manifests: std::collections::HashMap<String, Manifest>,
 }
 
 #[serde_as]
@@ -107,9 +105,11 @@ pub struct Root {
 ///
 /// This function will panic if the JSON string cannot be parsed into the
 /// expected structure.
-pub fn extract_capability_components(config: &str) -> Result<Vec<CapabilityComponent>, SerdeError> {
-    let parsed = serde_json::from_str::<Root>(config)?;
-    let components = &parsed.manifests.version.spec.components;
+pub fn extract_capability_components(config: &str) -> anyhow::Result<Vec<CapabilityComponent>> {
+    let parsed = serde_json::from_str::<Manifests>(config)?;
+    let components =
+        get_components(&parsed).ok_or_else(|| anyhow::anyhow!("No components found"))?;
+
     let capability_components: Vec<CapabilityComponent> = components
         .iter()
         .filter(|comp| {
@@ -123,6 +123,15 @@ pub fn extract_capability_components(config: &str) -> Result<Vec<CapabilityCompo
         .collect();
 
     Ok(capability_components)
+}
+
+/// Extracts the components from the first available manifest in the Manifests struct.
+fn get_components(parsed: &Manifests) -> Option<&Vec<CapabilityComponent>> {
+    parsed
+        .manifests
+        .values()
+        .next()
+        .map(|manifest| &manifest.spec.components)
 }
 
 pub type GetFn = fn(&str, &str) -> Result<Option<Vec<u8>>, Box<dyn Error>>;
@@ -177,7 +186,10 @@ pub fn get_manifests(
 
     let app = match apps.iter().find(|&app| app == app_name) {
         Some(app) => app,
-        None => Err(format!("App {app_name} not found"))?,
+        None => Err(format!(
+            "App {app_name} not found. Available apps: {:?}",
+            apps
+        ))?,
     };
 
     let app_key = format!("{}-{}", wadm_default_manifest, app);
@@ -193,16 +205,12 @@ pub fn get_manifests(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::{fs::File, io::Read as _};
 
-    use super::*;
-
-    // A mock function to simulate the behavior of the key-value store `get` function
     fn mock_get(bucket: &str, key: &str) -> Result<Option<Vec<u8>>, Box<dyn Error>> {
         match (bucket, key) {
-            // Simulate the retrieval of the list of application names
             ("wadm_manifests", "default") => Ok(Some(Vec::from(r#"["mds", "another-app"]"#))),
-            // Simulate the retrieval of the configuration for a specific app
             ("wadm_manifests", "default-mds") => Ok(Some(Vec::from(r#"{"config": "value"}"#))),
             _ => Err(Box::new(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
@@ -217,10 +225,8 @@ mod tests {
         let wadm_manifest = "wadm_manifests";
         let wadm_default_manifest = "default";
 
-        // Call `get_manifests` with the mock `get_fn` function
         let result = get_manifests(mock_get, app_name, wadm_manifest, wadm_default_manifest);
 
-        // Assert that the configuration is returned correctly
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), r#"{"config": "value"}"#);
     }
@@ -231,14 +237,12 @@ mod tests {
         let wadm_manifest = "wadm_manifests";
         let wadm_default_manifest = "default";
 
-        // Call `get_manifests` with the mock `get_fn` function
         let result = get_manifests(mock_get, app_name, wadm_manifest, wadm_default_manifest);
 
-        // Assert that an error is returned when the app is not found
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "App non_existent_app not found"
+            "App non_existent_app not found. Available apps: [\"mds\", \"another-app\"]"
         );
     }
 
@@ -277,32 +281,6 @@ mod tests {
                                         }
                                     ]
                                 }
-                            },
-                            {
-                                "name": "option-ticker-deribit-btc",
-                                "type": "capability",
-                                "properties": {
-                                    "image": "ghcr.io/jabratech/ticker-provider:0.1.0",
-                                    "config": [
-                                        {
-                                            "name": "option-ticker-deribit-btc",
-                                            "properties": {
-                                                "exchange_name": "deribit",
-                                                "currency": "btc",
-                                                "instrument_kind": "option",
-                                                "exchange": "deribit",
-                                                "uri": "192.100.1.213:4222"
-                                            }
-                                        }
-                                    ]
-                                }
-                            },
-                            {
-                                "name": "another-component",
-                                "type": "component",
-                                "properties": {
-                                    "image": "ghcr.io/jabratech/another-component:0.1.0"
-                                }
                             }
                         ]
                     }
@@ -312,71 +290,44 @@ mod tests {
         }
         "#;
 
-        let expected = vec![
-            CapabilityComponent {
-                name: "future-ticker-deribit-btc".to_string(),
-                component_type: "capability".to_string(),
-                properties: Some(Properties {
-                    image: "ghcr.io/jabratech/ticker-provider:0.1.0".to_string(),
-                    config: Some(vec![Config {
-                        name: "future-ticker-deribit-btc".to_string(),
-                        properties: Some(ConfigProperties {
-                            exchange_name: Some("jabratech".to_string()),
-                            uri: Some("192.100.1.213:4222".to_string()),
-                            exchange: Some("deribit".to_string()),
-                            currency: Some("btc".to_string()),
-                            instrument_kind: Some("future".to_string()),
-                        }),
-                    }]),
-                }),
-            },
-            CapabilityComponent {
-                name: "option-ticker-deribit-btc".to_string(),
-                component_type: "capability".to_string(),
-                properties: Some(Properties {
-                    image: "ghcr.io/jabratech/ticker-provider:0.1.0".to_string(),
-                    config: Some(vec![Config {
-                        name: "option-ticker-deribit-btc".to_string(),
-                        properties: Some(ConfigProperties {
-                            exchange_name: Some("deribit".to_string()),
-                            uri: Some("192.100.1.213:4222".to_string()),
-                            exchange: Some("deribit".to_string()),
-                            currency: Some("btc".to_string()),
-                            instrument_kind: Some("option".to_string()),
-                        }),
-                    }]),
-                }),
-            },
-        ];
+        let expected = vec![CapabilityComponent {
+            name: "future-ticker-deribit-btc".to_string(),
+            component_type: "capability".to_string(),
+            properties: Some(Properties {
+                image: "ghcr.io/jabratech/ticker-provider:0.1.0".to_string(),
+                config: Some(vec![Config {
+                    name: "future-ticker-deribit-btc".to_string(),
+                    properties: Some(ConfigProperties {
+                        exchange_name: Some("jabratech".to_string()),
+                        uri: Some("192.100.1.213:4222".to_string()),
+                        exchange: Some("deribit".to_string()),
+                        currency: Some("btc".to_string()),
+                        instrument_kind: Some("future".to_string()),
+                    }),
+                }]),
+            }),
+        }];
 
         let result = extract_capability_components(json_data).unwrap();
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_extract_capability_components_from_file() -> Result<(), SerdeError> {
-        // Specify the path to your JSON file
+    fn test_extract_capability_components_from_file() -> anyhow::Result<()> {
         let path = "../manifestor/tests/app_manifest.json";
-
-        // Open the file
         let mut file = File::open(path).expect("File not found");
 
-        // Read the contents of the file into a string
         let mut json_data = String::new();
         file.read_to_string(&mut json_data)
-            .expect("Failed to read the file");
+            .expect("Failed to read file");
 
-        // Attempt to deserialize the JSON data into the Root struct
         let result = extract_capability_components(&json_data);
-
-        // Ensure that deserialization succeeds
         assert!(
             result.is_ok(),
             "Failed to deserialize JSON: {:?}",
             result.err()
         );
 
-        // Optionally, check the contents of the deserialized data
         let capability_components = result.unwrap();
         assert!(
             !capability_components.is_empty(),
